@@ -1,9 +1,0 @@
-{
-  "name": "notion-quote-api",
-  "version": "1.0.0",
-  "description": "Notion API proxy for quotes",
-  "main": "api/quotes.js",
-  "dependencies": {
-    "@notionhq/client": "^2.2.1"
-  }
-}
