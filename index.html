@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notion Dynamic Quote Widget</title>
+    <title>Notion Widget</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
+        /* 优化1：移除强制全屏，使用自适应容器，完美兼容电脑与安卓端显示差异 */
         body {
             background-color: transparent;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -34,7 +35,7 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-            /* 核心：高度完全由内部图文自动撑开，解决安卓和电脑端显示差异 */
+            /* 核心：高度完全由内部文案或图文大小自适应撑开 */
             height: auto; 
         }
 
@@ -50,16 +51,15 @@
             color: #333333;
             letter-spacing: 0.3px;
             text-align: left;
-            margin-bottom: 12px;
             word-break: break-word;
         }
 
-        /* 核心优化：确保图片在手机和电脑上完美自适应大小，绝不变形、截断 */
+        /* 优化2：图片/截图自适应大小，防止被截断或撑破界面 */
         .quote-content img {
             display: block;
             width: 100%;
             height: auto;
-            max-height: 500px; /* 限制最大高度，防止超长图过分刷屏 */
+            max-height: 450px; /* 限制最大高度，超长截图可滚动或完整缩放 */
             object-fit: contain;
             border-radius: 8px;
             margin-bottom: 12px;
@@ -71,6 +71,7 @@
             color: #888888;
             text-align: right;
             font-style: normal;
+            margin-top: 10px;
         }
 
         .hint-icon {
@@ -81,7 +82,7 @@
             color: #bbb;
         }
 
-        /* 针对安卓手机端等小屏幕的自适应微调 */
+        /* 针对安卓手机端等小屏幕的响应式微调 */
         @media (max-width: 600px) {
             .quote-card {
                 padding: 14px 16px;
@@ -97,69 +98,65 @@
 
     <div class="quote-card" id="quoteCard" onclick="openNotionPage()">
         <div class="hint-icon">↗</div>
-        <div id="mediaContainer" class="quote-content">正在同步你的金句库...</div>
+        <!-- 容器：用来动态放文字或图片 -->
+        <div id="mediaContainer" class="quote-content">正在同步内容...</div>
         <div id="quoteSource" class="quote-source"></div>
     </div>
 
     <script>
-        // ⚠️ 请确保这里的网址是你的 Vercel 主域名
-        const API_URL = "https://my-notion-widget-nine.vercel.app/api/quotes";
-        const PAGE_ID = "3c68b0b3e94d8045a5f3fe3db793ad1d";
+        const API_URL = "https://你的项目名称.vercel.app/api/quotes";
+        const PAGE_ID = "你的Notion页面ID";
         const NOTION_PAGE_URL = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}`;
 
         let currentBlockId = "";
 
-        async function fetchNotionQuotes() {
+        async function fetchNotionData() {
             try {
                 const response = await fetch(API_URL);
                 if (!response.ok) throw new Error("网络请求失败");
+                const items = await response.json();
 
-                const quotes = await response.json();
-
-                if (quotes && quotes.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * quotes.length);
-                    const selected = quotes[randomIndex];
+                if (items && items.length > 0) {
+                    const selected = items[Math.floor(Math.random() * items.length)];
                     const container = document.getElementById('mediaContainer');
                     
+                    // 清空旧内容
                     container.innerHTML = "";
 
-                    // 1. 如果该条内容包含图片（如聊天截图），则先渲染图片
+                    // 优化3：完美支持“图文混排”（如标题下方同时包含文字与长截图）
                     if (selected.image) {
                         const img = document.createElement('img');
                         img.src = selected.image;
                         container.appendChild(img);
                     }
 
-                    // 2. 如果包含文字或标题，则渲染文字
-                    if (selected.text) {
+                    if (selected.content) {
                         const textDiv = document.createElement('div');
-                        // 如果是纯文字金句保留引号包裹，如果是图文混排则直接显示文本说明
-                        textDiv.innerText = selected.image ? selected.text : `『 ${selected.text} 』`;
+                        // 如果是纯文字保留引号美化，如果是图文混排则直接展示完整文案
+                        textDiv.innerText = selected.image ? selected.content : `『 ${selected.content} 』`;
                         container.appendChild(textDiv);
                     }
 
                     document.getElementById('quoteSource').innerText = `—— ${selected.source}`;
                     currentBlockId = selected.id;
                 } else {
-                    document.getElementById('mediaContainer').innerText = '『 Notion 页面中暂未检测到匹配的内容 』';
+                    document.getElementById('mediaContainer').innerText = '『 页面中暂未检测到内容 』';
                 }
-
             } catch (error) {
                 console.error(error);
-                document.getElementById('mediaContainer').innerText = '『 哎呀, 同步金句失败了, 请检查网络 』';
+                document.getElementById('mediaContainer').innerText = '『 哎呀，同步失败了，请检查网络 』';
             }
         }
 
         function openNotionPage() {
             let targetUrl = NOTION_PAGE_URL;
             if (currentBlockId) {
-                const cleanBlockId = currentBlockId.replace(/-/g, '');
-                targetUrl = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}#${cleanBlockId}`;
+                targetUrl = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}#${currentBlockId.replace(/-/g, '')}`;
             }
             window.open(targetUrl, '_blank');
         }
 
-        window.onload = fetchNotionQuotes;
+        window.onload = fetchNotionData;
     </script>
 </body>
 </html>
