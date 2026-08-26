@@ -13,45 +13,57 @@ module.exports = async (req, res) => {
             page_size: 100,
         });
 
-        const quotes = [];
-        for (const responseBlock of response.results) {
-            let text = "";
-            let source = "Notion 随笔"; // 默认出处
+        const items = [];
+        for (const block of response.results) {
+            let contentData = null;
             let imageUrl = null;
+            let type = "text";
 
-            // 1. 如果是普通段落
-            if (responseBlock.type === 'paragraph' && responseBlock.paragraph.rich_text.length > 0) {
-                text = responseBlock.paragraph.rich_text.map(t => t.plain_text).join('');
-            } 
-            // 2. 如果是标题（原功能：通常用来做金句出处或正文小标题）
-            else if (responseBlock.type.startsWith('heading_') && responseBlock[responseBlock.type].rich_text.length > 0) {
-                text = responseBlock[responseBlock.type].rich_text.map(t => t.plain_text).join('');
-                source = "Notion 标题";
+            // 情况 A：如果是文字段落或标题
+            if (block.type === 'paragraph' && block.paragraph.rich_text.length > 0) {
+                contentData = block.paragraph.rich_text.map(t => t.plain_text).join('');
+            } else if (block.type.startsWith('heading_') && block[block.type].rich_text.length > 0) {
+                contentData = block[block.type].rich_text.map(t => t.plain_text).join('');
             }
-            // 3. 新增：如果是图片块（如你截图里的微信/微博聊天截图）
-            else if (responseBlock.type === 'image') {
-                imageUrl = responseBlock.image.type === 'external' 
-                    ? responseBlock.image.external.url 
-                    : responseBlock.image.file.url;
-                
-                // 如果图片带有 caption 说明文字，把它作为正文或补充
-                if (responseBlock.image.caption && responseBlock.image.caption.length > 0) {
-                    text = responseBlock.image.caption.map(t => t.plain_text).join('');
+            // 情况 B：如果是直接的图片块
+            else if (block.type === 'image') {
+                type = "image";
+                imageUrl = block.image.type === 'external' 
+                    ? block.image.external.url 
+                    : block.image.file.url;
+            }
+
+            // 【新增核心优化】：如果这个区块本身有子区块（即标题或段落下面嵌套了图片或更多文字），把子区块也抓出来实现“图文混排”
+            if (block.has_children) {
+                try {
+                    const childResponse = await notion.blocks.children.list({ block_id: block.id, page_size: 10 });
+                    for (const child of childResponse.results) {
+                        if (child.type === 'image') {
+                            imageUrl = child.image.type === 'external' ? child.image.external.url : child.image.file.url;
+                        } else if (child.type === 'paragraph' && child.paragraph.rich_text.length > 0) {
+                            const childText = child.paragraph.rich_text.map(t => t.plain_text).join('');
+                            if (contentData) contentData += "\n" + childText;
+                            else contentData = childText;
+                        }
+                    }
+                } catch (e) {
+                    console.error("获取子区块失败", e);
                 }
-                source = "Notion 图片分享";
             }
 
-            if (text.trim().length > 0 || imageUrl) {
-                quotes.push({
-                    id: responseBlock.id,
-                    text: text,
-                    image: imageUrl,
-                    source: source
+            // 只要有文字或者有图片，就成功收录
+            if (contentData || imageUrl) {
+                items.push({
+                    id: block.id,
+                    type: imageUrl && !contentData ? "image" : (imageUrl ? "mixed" : "text"), // 兼容纯文字、纯图片或图文混合
+                    content: contentData || "",
+                    image: imageUrl || null,
+                    source: "Notion 图文库"
                 });
             }
         }
 
-        res.status(200).json(quotes);
+        res.status(200).json(items);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
