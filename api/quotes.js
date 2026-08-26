@@ -13,41 +13,45 @@ module.exports = async (req, res) => {
             page_size: 100,
         });
 
-        const items = [];
-        for (const block of response.results) {
+        const quotes = [];
+        for (const responseBlock of response.results) {
             let text = "";
+            let source = "Notion 随笔"; // 默认出处
             let imageUrl = null;
 
-            // 提取文字（支持段落、各级标题）
-            if (block.type === 'paragraph' && block.paragraph.rich_text.length > 0) {
-                text = block.paragraph.rich_text.map(t => t.plain_text).join('');
-            } else if (block.type.startsWith('heading_') && block[block.type].rich_text.length > 0) {
-                text = block[block.type].rich_text.map(t => t.plain_text).join('');
+            // 1. 如果是普通段落
+            if (responseBlock.type === 'paragraph' && responseBlock.paragraph.rich_text.length > 0) {
+                text = responseBlock.paragraph.rich_text.map(t => t.plain_text).join('');
+            } 
+            // 2. 如果是标题（原功能：通常用来做金句出处或正文小标题）
+            else if (responseBlock.type.startsWith('heading_') && responseBlock[responseBlock.type].rich_text.length > 0) {
+                text = responseBlock[responseBlock.type].rich_text.map(t => t.plain_text).join('');
+                source = "Notion 标题";
             }
-            
-            // 提取图片（同时检查 Notion 图片自带的 caption 作为文字说明）
-            else if (block.type === 'image') {
-                imageUrl = block.image.type === 'external' 
-                    ? block.image.external.url 
-                    : block.image.file.url;
+            // 3. 新增：如果是图片块（如你截图里的微信/微博聊天截图）
+            else if (responseBlock.type === 'image') {
+                imageUrl = responseBlock.image.type === 'external' 
+                    ? responseBlock.image.external.url 
+                    : responseBlock.image.file.url;
                 
-                if (block.image.caption && block.image.caption.length > 0) {
-                    text = block.image.caption.map(t => t.plain_text).join('');
+                // 如果图片带有 caption 说明文字，把它作为正文或补充
+                if (responseBlock.image.caption && responseBlock.image.caption.length > 0) {
+                    text = responseBlock.image.caption.map(t => t.plain_text).join('');
                 }
+                source = "Notion 图片分享";
             }
 
-            // 如果有文字或图片，就打包存入列表
-            if (text.trim() !== "" || imageUrl) {
-                items.push({
-                    id: block.id,
+            if (text.trim().length > 0 || imageUrl) {
+                quotes.push({
+                    id: responseBlock.id,
                     text: text,
                     image: imageUrl,
-                    source: "Notion 笔记"
+                    source: source
                 });
             }
         }
 
-        res.status(200).json(items);
+        res.status(200).json(quotes);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
