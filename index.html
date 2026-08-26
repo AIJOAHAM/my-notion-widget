@@ -5,34 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notion Dynamic Quote Widget</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             background-color: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; padding: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 10px;
         }
         .quote-card {
-            background: #ffffff; border-radius: 12px; padding: 24px 32px;
-            width: 100%; max-width: 650px;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px 32px;
+            width: 100%;
+            max-width: 650px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             border: 1px solid rgba(0, 0, 0, 0.04);
-            cursor: pointer; transition: all 0.3s ease;
-            position: relative; overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
         .quote-card:hover {
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
             transform: translateY(-2px);
+            border-color: rgba(0, 0, 0, 0.08);
         }
         .quote-content {
-            font-size: 16px; line-height: 1.8; color: #333333;
-            text-align: center; margin-bottom: 12px;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333333;
+            letter-spacing: 0.5px;
+            text-align: center;
+            margin-bottom: 12px;
         }
-        .quote-source { font-size: 13px; color: #888888; text-align: right; }
-        .hint-icon { position: absolute; top: 10px; right: 14px; font-size: 11px; color: #bbb; }
+        .quote-source {
+            font-size: 13px;
+            color: #888888;
+            text-align: right;
+            font-style: normal;
+        }
+        .hint-icon {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            font-size: 11px;
+            color: #bbb;
+        }
     </style>
 </head>
 <body>
+
     <div class="quote-card" id="quoteCard" onclick="openNotionPage()">
         <div class="hint-icon">↗</div>
         <div id="quoteText" class="quote-content">正在同步你的金句库...</div>
@@ -40,10 +69,10 @@
     </div>
 
     <script>
-        // ⚠️ 必须修改为你的 Vercel 主域名加 /api/quotes
-        const API_URL = "https://你的项目名称.vercel.app/api/quotes";[cite: 1]
-        const PAGE_ID = "你的Notion页面ID";[cite: 1]
-        const NOTION_PAGE_URL = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}`;[cite: 1]
+        // 你的 Vercel 动态 API 地址
+        const API_URL = "https://my-notion-widget-nine.vercel.app/api/quotes";
+        const PAGE_ID = "3c68b0b3e94d8045a5f3fe3db793ad1d";
+        const NOTION_PAGE_URL = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}`;
 
         let currentBlockId = "";
 
@@ -51,17 +80,22 @@
             try {
                 const response = await fetch(API_URL);
                 if (!response.ok) throw new Error("网络请求失败");
+
                 const quotes = await response.json();
 
                 if (quotes && quotes.length > 0) {
-                    const selected = quotes[Math.floor(Math.random() * quotes.length)];
+                    const randomIndex = Math.floor(Math.random() * quotes.length);
+                    const selected = quotes[randomIndex];
+
                     document.getElementById('quoteText').innerText = `『 ${selected.text} 』`;
                     document.getElementById('quoteSource').innerText = `—— ${selected.source}`;
                     currentBlockId = selected.id;
                 } else {
                     document.getElementById('quoteText').innerText = '『 Notion 页面中暂未检测到匹配的金句 』';
                 }
+
             } catch (error) {
+                console.error(error);
                 document.getElementById('quoteText').innerText = '『 哎呀，同步金句失败了，请检查网络 』';
             }
         }
@@ -69,7 +103,8 @@
         function openNotionPage() {
             let targetUrl = NOTION_PAGE_URL;
             if (currentBlockId) {
-                targetUrl = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}#${currentBlockId.replace(/-/g, '')}`;
+                const cleanBlockId = currentBlockId.replace(/-/g, '');
+                targetUrl = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}#${cleanBlockId}`;
             }
             window.open(targetUrl, '_blank');
         }
