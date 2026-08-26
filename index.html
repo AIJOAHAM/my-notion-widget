@@ -10,19 +10,23 @@
             padding: 0;
             box-sizing: border-box;
         }
+        
+        /* 核心修改：移除强制占满全屏的 100vh，改为自适应内容高度 */
         body {
             background-color: transparent;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            padding: 10px;
+            min-height: 100px;
+            width: 100%;
+            padding: 8px; /* 减少手机端边缘留白 */
         }
+
         .quote-card {
             background: #ffffff;
             border-radius: 12px;
-            padding: 24px 32px;
+            padding: 20px 24px;
             width: 100%;
             max-width: 650px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -31,32 +35,50 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            /* 允许卡片根据内部文字多少自动拉伸高度 */
+            height: auto; 
         }
+
         .quote-card:hover {
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
             transform: translateY(-2px);
             border-color: rgba(0, 0, 0, 0.08);
         }
+
         .quote-content {
-            font-size: 16px;
-            line-height: 1.8;
+            font-size: 15px;
+            line-height: 1.7;
             color: #333333;
-            letter-spacing: 0.5px;
-            text-align: center;
-            margin-bottom: 12px;
+            letter-spacing: 0.3px;
+            text-align: left; /* 改为左对齐或居中，长文阅读体验更好 */
+            margin-bottom: 10px;
+            word-break: break-word; /* 防止长英文或无空格字符撑破排版 */
         }
+
         .quote-source {
-            font-size: 13px;
+            font-size: 12px;
             color: #888888;
             text-align: right;
             font-style: normal;
         }
+
         .hint-icon {
             position: absolute;
-            top: 10px;
-            right: 14px;
+            top: 8px;
+            right: 10px;
             font-size: 11px;
             color: #bbb;
+        }
+
+        /* 针对手机端（屏幕宽度小于 600px）的专属微调 */
+        @media (max-width: 600px) {
+            .quote-card {
+                padding: 16px 18px;
+                border-radius: 10px;
+            }
+            .quote-content {
+                font-size: 14px; /* 手机端稍微缩小字号，容纳更多内容 */
+            }
         }
     </style>
 </head>
@@ -69,7 +91,7 @@
     </div>
 
     <script>
-        // 你的 Vercel 动态 API 地址
+        // ⚠️ 请确保这里的域名是你最新的 Vercel 主域名
         const API_URL = "https://my-notion-widget-nine.vercel.app/api/quotes";
         const PAGE_ID = "3c68b0b3e94d8045a5f3fe3db793ad1d";
         const NOTION_PAGE_URL = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}`;
