@@ -1,44 +1,31 @@
 const { Client } = require('@notionhq/client');
-
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
-const pageId = process.env.NOTION_PAGE_ID;
+const PAGE_ID = process.env.NOTION_PAGE_ID;
 
 module.exports = async (req, res) => {
-    // 允许跨域
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-
     try {
-        const response = await notion.blocks.children.list({
-            block_id: pageId,
-            page_size: 100,
-        });
-
-        const quotes = [];
+        const response = await notion.blocks.children.list({ block_id: PAGE_ID });
+        let quotes = [];
+        const results = response.results || [];
         
-        // 遍历页面中的所有块，不管什么格式，只要是文本就抓出来！
-        for (const block of response.results) {
-            let text = "";
-            if (block.type === 'paragraph' && block.paragraph.rich_text.length > 0) {
-                text = block.paragraph.rich_text.map(t => t.plain_text).join('');
-            } else if (block.type === 'quote' && block.quote.rich_text.length > 0) {
-                text = block.quote.rich_text.map(t => t.plain_text).join('');
-            } else if (block.type.startsWith('heading_') && block[block.type].rich_text.length > 0) {
-                text = block[block.type].rich_text.map(t => t.plain_text).join('');
+        for (let i = 0; i < results.length; i++) {
+            const block = results[i];
+            let headingText = "";
+            if (['heading_1', 'heading_2', 'heading_3'].includes(block.type)) {
+                const rt = block[block.type].rich_text;
+                if (rt && rt.length > 0) headingText = rt.map(t => t.plain_text).join('');
             }
-
-            if (text.trim().length > 0) {
-                quotes.push({
-                    id: block.id,
-                    text: text,
-                    source: "Notion 随笔"
-                });
+            if (headingText && i + 1 < results.length) {
+                const nextBlock = results[i + 1];
+                if (nextBlock.type === 'paragraph') {
+                    const pText = nextBlock.paragraph.rich_text.map(t => t.plain_text).join('');
+                    if (pText) quotes.push({ text: pText, source: headingText, id: block.id });
+                }
             }
         }
-
         res.status(200).json(quotes);
     } catch (error) {
-        console.error(error);
         res.status(500).json({ error: error.message });
     }
 };
