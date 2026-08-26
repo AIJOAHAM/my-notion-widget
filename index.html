@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notion Dynamic Card Widget</title>
+    <title>Notion Dynamic Quote Widget</title>
     <style>
         * {
             margin: 0;
@@ -25,7 +25,7 @@
         .quote-card {
             background: #ffffff;
             border-radius: 12px;
-            padding: 18px 22px;
+            padding: 20px 24px;
             width: 100%;
             max-width: 650px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -34,7 +34,7 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-            /* 关键：高度完全由内部图文自动撑开，多长显示多高，完美适应手机/电脑 */
+            /* 核心：高度完全由内部图文自动撑开，解决安卓和电脑端显示差异 */
             height: auto; 
         }
 
@@ -46,30 +46,31 @@
 
         .quote-content {
             font-size: 15px;
-            line-height: 1.6;
+            line-height: 1.7;
             color: #333333;
             letter-spacing: 0.3px;
             text-align: left;
+            margin-bottom: 12px;
             word-break: break-word;
         }
 
-        /* 图片自适应排版：防止截图过大撑破卡片 */
+        /* 核心优化：确保图片在手机和电脑上完美自适应大小，绝不变形、截断 */
         .quote-content img {
             display: block;
             width: 100%;
             height: auto;
-            max-height: 450px;
+            max-height: 500px; /* 限制最大高度，防止超长图过分刷屏 */
             object-fit: contain;
             border-radius: 8px;
             margin-bottom: 12px;
-            background: #f9f9f9;
+            background: #fafafa;
         }
 
         .quote-source {
             font-size: 12px;
             color: #888888;
             text-align: right;
-            margin-top: 10px;
+            font-style: normal;
         }
 
         .hint-icon {
@@ -80,7 +81,7 @@
             color: #bbb;
         }
 
-        /* 安卓等移动端设备的专属微调 */
+        /* 针对安卓手机端等小屏幕的自适应微调 */
         @media (max-width: 600px) {
             .quote-card {
                 padding: 14px 16px;
@@ -96,55 +97,56 @@
 
     <div class="quote-card" id="quoteCard" onclick="openNotionPage()">
         <div class="hint-icon">↗</div>
-        <div id="mediaContainer" class="quote-content">正在同步内容...</div>
+        <div id="mediaContainer" class="quote-content">正在同步你的金句库...</div>
         <div id="quoteSource" class="quote-source"></div>
     </div>
 
     <script>
-        // ⚠️ 确保这里的域名是你最新的 Vercel 主域名
+        // ⚠️ 请确保这里的网址是你的 Vercel 主域名
         const API_URL = "https://my-notion-widget-nine.vercel.app/api/quotes";
         const PAGE_ID = "3c68b0b3e94d8045a5f3fe3db793ad1d";
         const NOTION_PAGE_URL = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}`;
 
         let currentBlockId = "";
 
-        async function fetchNotionData() {
+        async function fetchNotionQuotes() {
             try {
                 const response = await fetch(API_URL);
                 if (!response.ok) throw new Error("网络请求失败");
 
-                const items = await response.json();
+                const quotes = await response.json();
 
-                if (items && items.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * items.length);
-                    const selected = items[randomIndex];
+                if (quotes && quotes.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * quotes.length);
+                    const selected = quotes[randomIndex];
                     const container = document.getElementById('mediaContainer');
                     
                     container.innerHTML = "";
 
-                    // 如果有图片（如你截图里的聊天截图），优先渲染图片
+                    // 1. 如果该条内容包含图片（如聊天截图），则先渲染图片
                     if (selected.image) {
                         const img = document.createElement('img');
                         img.src = selected.image;
                         container.appendChild(img);
                     }
 
-                    // 如果有文字（如你截图上方的标题或段落说明），渲染在对应位置
+                    // 2. 如果包含文字或标题，则渲染文字
                     if (selected.text) {
                         const textDiv = document.createElement('div');
-                        textDiv.innerText = selected.image ? selected.text : `${selected.text}`;
+                        // 如果是纯文字金句保留引号包裹，如果是图文混排则直接显示文本说明
+                        textDiv.innerText = selected.image ? selected.text : `『 ${selected.text} 』`;
                         container.appendChild(textDiv);
                     }
 
                     document.getElementById('quoteSource').innerText = `—— ${selected.source}`;
                     currentBlockId = selected.id;
                 } else {
-                    container.innerText = '『 Notion 页面中暂未检测到内容 』';
+                    document.getElementById('mediaContainer').innerText = '『 Notion 页面中暂未检测到匹配的内容 』';
                 }
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('mediaContainer').innerText = '『 哎呀，同步失败了，请检查网络 』';
+                document.getElementById('mediaContainer').innerText = '『 哎呀, 同步金句失败了, 请检查网络 』';
             }
         }
 
@@ -157,7 +159,7 @@
             window.open(targetUrl, '_blank');
         }
 
-        window.onload = fetchNotionData;
+        window.onload = fetchNotionQuotes;
     </script>
 </body>
 </html>
