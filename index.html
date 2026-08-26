@@ -1,162 +1,125 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notion Widget</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        /* 优化1：移除强制全屏，使用自适应容器，完美兼容电脑与安卓端显示差异 */
-        body {
-            background-color: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 80px;
-            width: 100%;
-            padding: 6px;
-        }
-
-        .quote-card {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 20px 24px;
-            width: 100%;
-            max-width: 650px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(0, 0, 0, 0.04);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            /* 核心：高度完全由内部文案或图文大小自适应撑开 */
-            height: auto; 
-        }
-
-        .quote-card:hover {
-            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
-            border-color: rgba(0, 0, 0, 0.08);
-        }
-
-        .quote-content {
-            font-size: 15px;
-            line-height: 1.7;
-            color: #333333;
-            letter-spacing: 0.3px;
-            text-align: left;
-            word-break: break-word;
-        }
-
-        /* 优化2：图片/截图自适应大小，防止被截断或撑破界面 */
-        .quote-content img {
-            display: block;
-            width: 100%;
-            height: auto;
-            max-height: 450px; /* 限制最大高度，超长截图可滚动或完整缩放 */
-            object-fit: contain;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            background: #fafafa;
-        }
-
-        .quote-source {
-            font-size: 12px;
-            color: #888888;
-            text-align: right;
-            font-style: normal;
-            margin-top: 10px;
-        }
-
-        .hint-icon {
-            position: absolute;
-            top: 8px;
-            right: 10px;
-            font-size: 11px;
-            color: #bbb;
-        }
-
-        /* 针对安卓手机端等小屏幕的响应式微调 */
-        @media (max-width: 600px) {
-            .quote-card {
-                padding: 14px 16px;
-                border-radius: 10px;
-            }
-            .quote-content {
-                font-size: 14px;
-            }
-        }
-    </style>
-</head>
 <body>
 
+
+
     <div class="quote-card" id="quoteCard" onclick="openNotionPage()">
+
         <div class="hint-icon">↗</div>
+
         <!-- 容器：用来动态放文字或图片 -->
+
         <div id="mediaContainer" class="quote-content">正在同步内容...</div>
+
         <div id="quoteSource" class="quote-source"></div>
+
     </div>
 
+
+
     <script>
+
         const API_URL = "https://你的项目名称.vercel.app/api/quotes";
+
         const PAGE_ID = "你的Notion页面ID";
+
         const NOTION_PAGE_URL = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}`;
+
+
 
         let currentBlockId = "";
 
+
+
         async function fetchNotionData() {
+
             try {
+
                 const response = await fetch(API_URL);
+
                 if (!response.ok) throw new Error("网络请求失败");
+
                 const items = await response.json();
 
+
+
                 if (items && items.length > 0) {
+
                     const selected = items[Math.floor(Math.random() * items.length)];
+
                     const container = document.getElementById('mediaContainer');
+
                     
+
                     // 清空旧内容
+
                     container.innerHTML = "";
 
-                    // 优化3：完美支持“图文混排”（如标题下方同时包含文字与长截图）
-                    if (selected.image) {
+
+
+                    if (selected.type === 'image') {
+
+                        // 如果抽到的是图片
+
                         const img = document.createElement('img');
-                        img.src = selected.image;
+
+                        img.src = selected.content;
+
+                        img.style.maxWidth = "100%";
+
+                        img.style.borderRadius = "8px";
+
                         container.appendChild(img);
+
+                        document.getElementById('quoteSource').innerText = "—— Notion 图片";
+
+                    } else {
+
+                        // 如果抽到的是文字
+
+                        container.innerText = `『 ${selected.content} 』`;
+
+                        document.getElementById('quoteSource').innerText = `—— ${selected.source}`;
+
                     }
 
-                    if (selected.content) {
-                        const textDiv = document.createElement('div');
-                        // 如果是纯文字保留引号美化，如果是图文混排则直接展示完整文案
-                        textDiv.innerText = selected.image ? selected.content : `『 ${selected.content} 』`;
-                        container.appendChild(textDiv);
-                    }
 
-                    document.getElementById('quoteSource').innerText = `—— ${selected.source}`;
+
                     currentBlockId = selected.id;
+
                 } else {
+
                     document.getElementById('mediaContainer').innerText = '『 页面中暂未检测到内容 』';
+
                 }
+
             } catch (error) {
-                console.error(error);
+
                 document.getElementById('mediaContainer').innerText = '『 哎呀，同步失败了，请检查网络 』';
+
             }
+
         }
+
+
 
         function openNotionPage() {
+
             let targetUrl = NOTION_PAGE_URL;
+
             if (currentBlockId) {
+
                 targetUrl = `https://www.notion.so/${PAGE_ID.replace(/-/g, '')}#${currentBlockId.replace(/-/g, '')}`;
+
             }
+
             window.open(targetUrl, '_blank');
+
         }
 
+
+
         window.onload = fetchNotionData;
+
     </script>
+
 </body>
-</html>
