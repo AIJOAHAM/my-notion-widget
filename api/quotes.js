@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
 
             if (headingText && i + 1 < results.length) {
                 let pText = "";
-                let imageUrl = null;
+                let imageUrls = []; // 改为数组，支持收集多张图片
                 let currentIndex = i + 1;
 
                 // 2. 向后检查：提取紧随其后的段落文本（文案）
@@ -33,19 +33,21 @@ module.exports = async (req, res) => {
                     currentIndex++; // 游标往后移
                 }
 
-                // 3. 核心新增：检查文案后面（或直接在标题后面）是否紧跟了一张图片截图
-                if (currentIndex < results.length && results[currentIndex].type === 'image') {
+                // 3. 核心升级：连续向后检查，收集所有相邻的图片块（支持多张图）
+                while (currentIndex < results.length && results[currentIndex].type === 'image') {
                     const imgBlock = results[currentIndex];
-                    imageUrl = imgBlock.image.type === 'external' 
+                    const url = imgBlock.image.type === 'external' 
                         ? imgBlock.image.external.url 
                         : imgBlock.image.file.url;
+                    imageUrls.push(url);
+                    currentIndex++;
                 }
 
-                // 只要有文字或者有图片，就成功压入数组
-                if (pText || imageUrl) {
+                // 只要有文字或者有任何图片，就成功压入数组
+                if (pText || imageUrls.length > 0) {
                     quotes.push({ 
                         text: pText, 
-                        image: imageUrl, // 新增：图片链接
+                        images: imageUrls, // 传送图片数组
                         source: headingText, 
                         id: block.id 
                     });
